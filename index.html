@@ -1,0 +1,1696 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="theme-color" content="#030305">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <title>OpenLight Controller</title>
+  <link rel="manifest" href="manifest.json">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@600;700;800;900&family=Rajdhani:wght@500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #030305;
+      --card-bg: rgba(8, 11, 18, 0.88);
+      --card-border: rgba(0, 240, 255, 0.18);
+      --neon-cyan: #00f0ff;
+      --neon-pink: #ff0055;
+      --neon-green: #00ff66;
+      --neon-yellow: #ffe600;
+      --accent-glow: rgba(0, 240, 255, 0.45);
+      --text: #f1f5f9;
+      --text-muted: #64748b;
+      --on-color: #00ff66;
+      --off-color: #334155;
+      --bulb-glow: #00f0ff;
+      --font-cyber: 'Orbitron', -apple-system, sans-serif;
+      --font-tech: 'Rajdhani', -apple-system, sans-serif;
+      --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Courier New", monospace;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    body {
+      font-family: var(--font-tech), -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background-color: var(--bg);
+      background-image: 
+        radial-gradient(circle at 50% 0%, rgba(0, 240, 255, 0.12) 0%, rgba(255, 0, 85, 0.05) 45%, transparent 80%),
+        linear-gradient(rgba(0, 240, 255, 0.025) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(0, 240, 255, 0.025) 1px, transparent 1px);
+      background-size: 100% 100%, 36px 36px, 36px 36px;
+      color: var(--text);
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      padding: 24px 16px 40px;
+    }
+
+    .app-container {
+      width: 100%;
+      max-width: 440px;
+      display: flex;
+      flex-direction: column;
+      gap: 18px;
+      position: relative;
+    }
+
+    header {
+      text-align: center;
+      margin-bottom: 6px;
+      position: relative;
+    }
+
+    header h1 {
+      font-family: var(--font-cyber);
+      font-size: 1.55rem;
+      font-weight: 800;
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      background: linear-gradient(135deg, #ffffff 0%, var(--neon-cyan) 60%, var(--neon-pink) 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      filter: drop-shadow(0 0 16px rgba(0, 240, 255, 0.45));
+    }
+
+    header h1 svg {
+      filter: drop-shadow(0 0 8px var(--neon-cyan));
+    }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 4px 14px;
+      background: rgba(0, 240, 255, 0.04);
+      border: 1px solid rgba(0, 240, 255, 0.25);
+      border-radius: 4px;
+      font-family: var(--font-mono);
+      font-size: 0.75rem;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      color: var(--neon-cyan);
+      margin-top: 8px;
+      box-shadow: inset 0 0 10px rgba(0, 240, 255, 0.06);
+    }
+
+    .status-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: var(--off-color);
+      transition: background 0.3s, box-shadow 0.3s;
+    }
+
+    .status-dot.connected {
+      background: var(--neon-green);
+      box-shadow: 0 0 12px var(--neon-green);
+    }
+
+    .status-dot.connecting {
+      background: var(--neon-yellow);
+      box-shadow: 0 0 12px var(--neon-yellow);
+    }
+
+    .card {
+      background: var(--card-bg);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border: 1px solid var(--card-border);
+      border-radius: 12px;
+      padding: 20px;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.8), inset 0 1px 0 rgba(0, 240, 255, 0.15);
+      position: relative;
+    }
+
+    .card::before {
+      content: '';
+      position: absolute;
+      top: -1px;
+      left: 16px;
+      width: 40px;
+      height: 2px;
+      background: var(--neon-cyan);
+      box-shadow: 0 0 10px var(--neon-cyan);
+    }
+
+    /* Connect Section */
+    .connect-banner {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+      gap: 12px;
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      padding: 13px 24px;
+      border-radius: 8px;
+      font-family: var(--font-cyber);
+      font-size: 0.9rem;
+      font-weight: 700;
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+      border: none;
+      cursor: pointer;
+      transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    .btn:active {
+      transform: scale(0.98);
+    }
+
+    .btn-primary {
+      background: linear-gradient(135deg, rgba(0, 240, 255, 0.9) 0%, rgba(0, 140, 255, 0.9) 100%);
+      color: #030305;
+      box-shadow: 0 0 20px rgba(0, 240, 255, 0.4), inset 0 0 10px rgba(255, 255, 255, 0.4);
+      width: 100%;
+    }
+
+    .btn-primary:hover {
+      box-shadow: 0 0 30px rgba(0, 240, 255, 0.7);
+      filter: brightness(1.1);
+    }
+
+    .btn-disconnect {
+      background: rgba(255, 0, 85, 0.1);
+      color: var(--neon-pink);
+      border: 1px solid rgba(255, 0, 85, 0.4);
+      font-family: var(--font-mono);
+      padding: 6px 14px;
+      font-size: 0.75rem;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      border-radius: 4px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .btn-disconnect:hover {
+      background: rgba(255, 0, 85, 0.2);
+      box-shadow: 0 0 12px rgba(255, 0, 85, 0.5);
+    }
+
+    /* Cyber Reactor Power Button */
+    .power-section {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      margin: 10px 0 20px;
+    }
+
+    .power-btn {
+      width: 96px;
+      height: 96px;
+      border-radius: 50%;
+      background: radial-gradient(circle, #080d16 0%, #030408 85%);
+      border: 2px solid rgba(0, 240, 255, 0.25);
+      color: #fff;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      box-shadow: inset 0 0 15px rgba(0, 0, 0, 0.9), 0 0 15px rgba(0, 0, 0, 0.6);
+    }
+
+    .power-btn::before {
+      content: '';
+      position: absolute;
+      inset: -6px;
+      border-radius: 50%;
+      border: 1px dashed rgba(0, 240, 255, 0.2);
+      transition: border-color 0.3s, transform 0.6s linear;
+    }
+
+    .power-btn svg {
+      width: 42px;
+      height: 42px;
+      stroke: var(--off-color);
+      stroke-width: 2.5;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+      transition: stroke 0.3s, filter 0.3s;
+    }
+
+    .power-btn.is-on {
+      border-color: var(--bulb-glow);
+      box-shadow: 0 0 40px var(--bulb-glow), inset 0 0 25px var(--bulb-glow);
+    }
+
+    .power-btn.is-on::before {
+      border-color: var(--bulb-glow);
+      animation: rotateRing 12s linear infinite;
+    }
+
+    @keyframes rotateRing {
+      from { transform: rotate(0deg); }
+      to { transform: rotate(360deg); }
+    }
+
+    .power-btn.is-on svg {
+      stroke: #ffffff;
+      filter: drop-shadow(0 0 10px var(--bulb-glow));
+    }
+
+    .power-label {
+      margin-top: 12px;
+      font-family: var(--font-cyber);
+      font-size: 0.85rem;
+      font-weight: 700;
+      letter-spacing: 2px;
+      color: var(--text-muted);
+    }
+
+    /* Sliders */
+    .control-group {
+      margin-top: 18px;
+    }
+
+    .control-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 8px;
+      font-family: var(--font-cyber);
+      font-size: 0.8rem;
+      font-weight: 700;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      color: #94a3b8;
+    }
+
+    .slider-val {
+      font-family: var(--font-mono);
+      color: var(--neon-cyan);
+      font-weight: 700;
+      font-size: 0.85rem;
+      letter-spacing: 1px;
+    }
+
+    input[type="range"] {
+      -webkit-appearance: none;
+      width: 100%;
+      height: 6px;
+      background: rgba(0, 240, 255, 0.1);
+      border: 1px solid rgba(0, 240, 255, 0.15);
+      border-radius: 4px;
+      outline: none;
+    }
+
+    input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 22px;
+      height: 22px;
+      border-radius: 4px;
+      background: var(--neon-cyan);
+      cursor: pointer;
+      box-shadow: 0 0 14px var(--neon-cyan), inset 0 0 4px #ffffff;
+      border: 2px solid #030305;
+      transition: transform 0.1s, box-shadow 0.2s;
+    }
+
+    input[type="range"]::-webkit-slider-thumb:hover {
+      transform: scale(1.15);
+      box-shadow: 0 0 20px var(--neon-cyan);
+    }
+
+    /* Color Grid */
+    .color-grid {
+      display: grid;
+      grid-template-columns: repeat(6, 1fr);
+      gap: 10px;
+      margin-top: 12px;
+    }
+
+    .color-swatch {
+      aspect-ratio: 1;
+      border-radius: 6px;
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      cursor: pointer;
+      position: relative;
+      transition: transform 0.15s, border-color 0.15s, box-shadow 0.15s;
+    }
+
+    .color-swatch:active {
+      transform: scale(0.9);
+    }
+
+    .color-swatch.active {
+      border-color: #ffffff;
+      box-shadow: 0 0 16px var(--neon-cyan), inset 0 0 8px rgba(255, 255, 255, 0.8);
+      transform: scale(1.08);
+      z-index: 2;
+    }
+
+    /* Custom Color Picker & Saved Palette */
+    .custom-color-row {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      margin-top: 16px;
+      padding-top: 14px;
+      border-top: 1px dashed rgba(0, 240, 255, 0.15);
+    }
+
+    .color-picker-wrapper {
+      position: relative;
+      width: 44px;
+      height: 44px;
+      border-radius: 6px;
+      overflow: hidden;
+      border: 2px solid var(--neon-cyan);
+      box-shadow: 0 0 12px rgba(0, 240, 255, 0.4);
+      flex-shrink: 0;
+    }
+
+    input[type="color"] {
+      position: absolute;
+      top: -10px;
+      left: -10px;
+      width: 64px;
+      height: 64px;
+      border: none;
+      cursor: pointer;
+      background: none;
+    }
+
+    .save-color-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: rgba(0, 240, 255, 0.08);
+      border: 1px solid var(--neon-cyan);
+      color: var(--neon-cyan);
+      padding: 7px 12px;
+      border-radius: 4px;
+      font-family: var(--font-cyber);
+      font-size: 0.72rem;
+      font-weight: 700;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      cursor: pointer;
+      transition: all 0.2s;
+      flex-shrink: 0;
+    }
+
+    .save-color-btn:hover {
+      background: var(--neon-cyan);
+      color: #020305;
+      box-shadow: 0 0 16px var(--neon-cyan);
+    }
+
+    .custom-palette-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-top: 14px;
+      margin-bottom: 6px;
+    }
+
+    .clear-palette-btn {
+      background: transparent;
+      border: none;
+      color: var(--neon-pink);
+      font-family: var(--font-cyber);
+      font-size: 0.7rem;
+      letter-spacing: 0.5px;
+      cursor: pointer;
+      padding: 2px 4px;
+      transition: all 0.2s;
+    }
+
+    .clear-palette-btn:hover {
+      color: #ffffff;
+      text-shadow: 0 0 8px var(--neon-pink);
+    }
+
+    .saved-swatch-container {
+      display: grid;
+      grid-template-columns: repeat(6, 1fr);
+      gap: 10px;
+      margin-top: 8px;
+    }
+
+    .saved-swatch {
+      aspect-ratio: 1;
+      border-radius: 6px;
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      cursor: pointer;
+      position: relative;
+      transition: transform 0.15s, border-color 0.15s, box-shadow 0.15s;
+    }
+
+    .saved-swatch:hover {
+      transform: scale(1.05);
+      border-color: #ffffff;
+      box-shadow: 0 0 10px var(--neon-cyan);
+    }
+
+    .saved-swatch.active {
+      border-color: #ffffff;
+      box-shadow: 0 0 16px var(--neon-cyan), inset 0 0 6px rgba(255, 255, 255, 0.8);
+      transform: scale(1.08);
+      z-index: 2;
+    }
+
+    .saved-swatch .delete-btn {
+      position: absolute;
+      top: -4px;
+      right: -4px;
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      background: #ff0055;
+      color: #fff;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      font-size: 11px;
+      line-height: 1;
+      border: 1px solid #ffffff;
+      box-shadow: 0 0 6px #ff0055;
+      cursor: pointer;
+      z-index: 5;
+    }
+
+    .saved-swatch:hover .delete-btn {
+      display: flex;
+    }
+
+    .empty-palette-hint {
+      grid-column: 1 / -1;
+      font-family: var(--font-tech);
+      font-size: 0.82rem;
+      color: var(--text-muted);
+      border: 1px dashed rgba(0, 240, 255, 0.15);
+      border-radius: 6px;
+      padding: 10px 12px;
+      text-align: center;
+      background: rgba(4, 7, 12, 0.4);
+    }
+
+    /* Mode Stepper row */
+    .mode-stepper-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      margin-top: 10px;
+      background: rgba(4, 7, 12, 0.6);
+      border: 1px solid rgba(0, 240, 255, 0.2);
+      border-radius: 6px;
+      padding: 6px 10px;
+    }
+
+    .stepper-btn {
+      background: rgba(0, 240, 255, 0.08);
+      border: 1px solid rgba(0, 240, 255, 0.3);
+      color: var(--neon-cyan);
+      padding: 6px 12px;
+      border-radius: 4px;
+      font-family: var(--font-cyber);
+      font-size: 0.72rem;
+      font-weight: 700;
+      letter-spacing: 1px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .stepper-btn:hover {
+      background: var(--neon-cyan);
+      color: #020305;
+      box-shadow: 0 0 12px var(--neon-cyan);
+    }
+
+    .stepper-display {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+      flex-grow: 1;
+      user-select: none;
+    }
+
+    .stepper-num {
+      font-family: var(--font-mono);
+      font-weight: 700;
+      font-size: 0.85rem;
+      color: #ffffff;
+      letter-spacing: 1px;
+    }
+
+    .stepper-desc {
+      font-family: var(--font-cyber);
+      font-size: 0.7rem;
+      color: var(--neon-cyan);
+      letter-spacing: 0.5px;
+      text-transform: uppercase;
+    }
+
+    /* Select Inputs */
+    .styled-select {
+      width: 100%;
+      background: #060911;
+      border: 1px solid rgba(0, 240, 255, 0.25);
+      border-radius: 6px;
+      padding: 10px 14px;
+      color: #f1f5f9;
+      font-family: var(--font-tech);
+      font-size: 0.95rem;
+      letter-spacing: 0.5px;
+      outline: none;
+      cursor: pointer;
+      box-shadow: inset 0 0 8px rgba(0, 0, 0, 0.6);
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+
+    .styled-select:focus {
+      border-color: var(--neon-cyan);
+      box-shadow: 0 0 12px rgba(0, 240, 255, 0.35);
+    }
+
+    .styled-select option {
+      background: #080d1a;
+      color: #f1f5f9;
+    }
+
+    /* Test buttons grid */
+    .test-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 8px;
+      margin-top: 10px;
+    }
+
+    .test-btn {
+      background: rgba(0, 240, 255, 0.04);
+      border: 1px solid rgba(0, 240, 255, 0.2);
+      border-radius: 6px;
+      padding: 8px 10px;
+      color: #cbd5e1;
+      font-family: var(--font-mono);
+      font-size: 0.76rem;
+      letter-spacing: 0.5px;
+      cursor: pointer;
+      text-align: center;
+      transition: all 0.15s;
+    }
+
+    .test-btn:hover {
+      background: rgba(0, 240, 255, 0.15);
+      border-color: var(--neon-cyan);
+      color: #ffffff;
+      box-shadow: 0 0 12px rgba(0, 240, 255, 0.3);
+    }
+
+    /* Section Subhead in Drawer */
+    .drawer-section-title {
+      font-family: var(--font-cyber);
+      font-size: 0.75rem;
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+      color: var(--neon-cyan);
+      margin-top: 14px;
+      margin-bottom: 6px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    /* Diagnostics / Telemetry Console */
+    details {
+      background: rgba(4, 7, 12, 0.9);
+      border: 1px solid rgba(0, 240, 255, 0.2);
+      border-radius: 8px;
+      padding: 12px;
+      font-size: 0.85rem;
+      box-shadow: 0 6px 20px rgba(0, 0, 0, 0.7);
+    }
+
+    summary {
+      cursor: pointer;
+      font-family: var(--font-cyber);
+      font-size: 0.78rem;
+      font-weight: 700;
+      letter-spacing: 1px;
+      color: var(--neon-cyan);
+      user-select: none;
+      text-transform: uppercase;
+    }
+
+    .log-box {
+      margin-top: 10px;
+      max-height: 180px;
+      overflow-y: auto;
+      font-family: var(--font-mono);
+      font-size: 0.73rem;
+      color: #00ff66;
+      background: #020305;
+      border: 1px solid rgba(0, 255, 102, 0.2);
+      padding: 10px;
+      border-radius: 4px;
+      white-space: pre-wrap;
+      word-break: break-all;
+      box-shadow: inset 0 0 15px rgba(0, 0, 0, 0.95);
+    }
+
+    .hex-send-row {
+      display: flex;
+      gap: 8px;
+      margin-top: 10px;
+    }
+
+    .hex-input {
+      flex-grow: 1;
+      background: #020305;
+      border: 1px solid rgba(0, 240, 255, 0.25);
+      border-radius: 4px;
+      padding: 8px 12px;
+      color: var(--neon-cyan);
+      font-family: var(--font-mono);
+      font-size: 0.82rem;
+      outline: none;
+    }
+
+    .hex-input:focus {
+      border-color: var(--neon-cyan);
+      box-shadow: 0 0 10px rgba(0, 240, 255, 0.3);
+    }
+  </style>
+</head>
+<body>
+
+  <div class="app-container">
+    <header>
+      <h1>
+        <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12 2v8"></path>
+          <path d="m4.93 10.93 1.41 1.41"></path>
+          <path d="M2 18h2"></path>
+          <path d="M20 18h2"></path>
+          <path d="m19.07 10.93-1.41 1.41"></path>
+          <path d="M22 22H2"></path>
+          <path d="m8 22 4-10 4 10"></path>
+        </svg>
+        OpenLight Controller
+      </h1>
+      <div class="badge">
+        <span class="status-dot" id="statusDot"></span>
+        <span id="statusText">BLE // DISCONNECTED</span>
+      </div>
+    </header>
+
+    <!-- Connect / Device Info Card -->
+    <div class="card" id="connectionCard">
+      <div class="connect-banner" id="disconnectedView">
+        <p style="color: var(--text-muted); font-size: 0.95rem;">
+          Pair with your <strong style="color: var(--neon-cyan);">KS03~0D0089</strong> LED strip lights.
+        </p>
+        <button class="btn btn-primary" id="connectBtn" onclick="app.connect()">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="m7 7 10 10-5 5V2l5 5L7 17"></path>
+          </svg>
+          Connect Lights
+        </button>
+      </div>
+
+      <div id="connectedView" style="display: none; justify-content: space-between; align-items: center;">
+        <div>
+          <div style="font-family: var(--font-cyber); font-weight: 700; font-size: 0.95rem; color: #ffffff;" id="deviceName">KS03~0D0089</div>
+          <div style="font-family: var(--font-mono); font-size: 0.75rem; color: var(--neon-green);" id="deviceDetails">Service: afd0 // Write: afd1 (ONLINE)</div>
+        </div>
+        <button class="btn-disconnect" onclick="app.disconnect()">[ Disconnect ]</button>
+      </div>
+    </div>
+
+    <!-- Power & Controls -->
+    <div class="card" id="mainControls" style="opacity: 0.45; pointer-events: none; transition: opacity 0.3s;">
+      
+      <!-- Protocol Mode Selector -->
+      <div style="margin-bottom: 14px;">
+        <div class="control-header">
+          <span>Protocol Mode</span>
+        </div>
+        <select class="styled-select" id="protocolSelect" onchange="app.setProtocol(this.value)">
+          <option value="tilde" selected>KS03~ Native (5A/5B/5C - Recommended)</option>
+          <option value="both">Auto / Dual (5A/5B/5C + 7E Packets)</option>
+          <option value="hyphen">Keepsmile KS03- (7E Protocol)</option>
+          <option value="ac">Keepsmile KS01/02 (AC Protocol)</option>
+          <option value="elk">ELK-BLEDOM Legacy</option>
+        </select>
+      </div>
+
+      <!-- Cyber Reactor Power Button -->
+      <div class="power-section">
+        <button class="power-btn" id="powerBtn" onclick="app.togglePower()" aria-label="Toggle Power">
+          <svg viewBox="0 0 24 24">
+            <path d="M18.36 6.64a9 9 0 1 1-12.73 0"></path>
+            <line x1="12" y1="2" x2="12" y2="12"></line>
+          </svg>
+        </button>
+        <div class="power-label" id="powerStateLabel">CORE: OFF</div>
+      </div>
+
+      <!-- Brightness Slider -->
+      <div class="control-group">
+        <div class="control-header">
+          <span>Brightness Output</span>
+          <span class="slider-val" id="brightnessVal">100%</span>
+        </div>
+        <input type="range" id="brightnessSlider" min="1" max="100" value="100" oninput="app.onBrightnessInput(this.value)">
+      </div>
+
+      <!-- Preset Colors -->
+      <div class="control-group">
+        <div class="control-header">
+          <span>Spectrum Presets</span>
+        </div>
+        <div class="color-grid" id="colorPresets">
+          <!-- Populated by JS -->
+        </div>
+
+        <div class="custom-color-row">
+          <div class="color-picker-wrapper" id="customColorWrapper">
+            <input type="color" id="customColorPicker" value="#00f0ff" oninput="app.onCustomColor(this.value)" onchange="app.onCustomColor(this.value)">
+          </div>
+          <div style="flex-grow: 1;">
+            <div style="font-family: var(--font-cyber); font-size: 0.82rem; font-weight: 700; text-transform: uppercase;">Custom Matrix Color</div>
+            <div style="font-family: var(--font-mono); font-size: 0.78rem; color: var(--neon-cyan);" id="hexLabel">#00F0FF</div>
+          </div>
+          <button class="save-color-btn" id="saveColorBtn" onclick="app.saveCurrentColor()" title="Save current matrix color to custom palette">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path>
+              <polyline points="17 21 17 13 7 13 7 21"></polyline>
+              <polyline points="7 3 7 8 15 8"></polyline>
+            </svg>
+            <span id="saveBtnText">Save Color</span>
+          </button>
+        </div>
+
+        <!-- Saved User Palettes -->
+        <div class="custom-palette-header">
+          <div style="font-family: var(--font-cyber); font-size: 0.74rem; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; color: #94a3b8;">
+            Saved Custom Palette <span id="savedColorsCount" style="color: var(--neon-cyan);">(0)</span>
+          </div>
+          <button class="clear-palette-btn" id="clearPaletteBtn" style="display: none;" onclick="app.clearAllSavedColors()">[ Clear All ]</button>
+        </div>
+        <div class="saved-swatch-container" id="savedColorsGrid">
+          <!-- Populated by JS -->
+        </div>
+      </div>
+
+      <!-- Dynamic Animation Modes -->
+      <div class="control-group">
+        <div class="control-header">
+          <span>Dynamic Light Animations</span>
+        </div>
+        <select class="styled-select" id="modeSelect" onchange="app.setMode(this.value)">
+          <option value="0">Static Color (No Effect - RGB Only)</option>
+          <optgroup label="Popular Dynamic Patterns">
+            <option value="128">Mode 128: 7-Color Jump (Cycle)</option>
+            <option value="129">Mode 129: RGB 3-Color Jump</option>
+            <option value="130">Mode 130: 7-Color Gradual Fade</option>
+            <option value="131">Mode 131: RGB 3-Color Gradual Fade</option>
+            <option value="142">Mode 142: 7-Color Strobe Flash</option>
+            <option value="143">Mode 143: RGB Strobe Flash</option>
+          </optgroup>
+          <optgroup label="Single Color Gradual Fades">
+            <option value="132">Mode 132: Red Gradual Fade</option>
+            <option value="133">Mode 133: Green Gradual Fade</option>
+            <option value="134">Mode 134: Blue Gradual Fade</option>
+            <option value="135">Mode 135: Yellow Gradual Fade</option>
+            <option value="136">Mode 136: Cyan Gradual Fade</option>
+            <option value="137">Mode 137: Purple Gradual Fade</option>
+            <option value="138">Mode 138: White Gradual Fade</option>
+          </optgroup>
+          <optgroup label="Two-Color Crossfades">
+            <option value="139">Mode 139: Red / Green Crossfade</option>
+            <option value="140">Mode 140: Red / Blue Crossfade</option>
+            <option value="141">Mode 141: Green / Blue Crossfade</option>
+          </optgroup>
+          <optgroup label="Single Color Strobe Flashes">
+            <option value="144">Mode 144: Red Strobe Flash</option>
+            <option value="145">Mode 145: Green Strobe Flash</option>
+            <option value="146">Mode 146: Blue Strobe Flash</option>
+            <option value="147">Mode 147: Yellow Strobe Flash</option>
+            <option value="148">Mode 148: Cyan Strobe Flash</option>
+            <option value="149">Mode 149: Purple Strobe Flash</option>
+            <option value="150">Mode 150: White Strobe Flash</option>
+          </optgroup>
+        </select>
+
+        <!-- Interactive Effect Explorer Stepper -->
+        <div class="mode-stepper-row">
+          <button class="stepper-btn" onclick="app.stepMode(-1)" title="Previous Pattern">◀ Prev</button>
+          <div class="stepper-display">
+            <span class="stepper-num" id="stepperNum">STATIC RGB</span>
+            <span class="stepper-desc" id="stepperName">STATIC COLOR (NO EFFECT)</span>
+          </div>
+          <button class="stepper-btn" onclick="app.stepMode(1)" title="Next Pattern">Next ▶</button>
+        </div>
+      </div>
+
+      <!-- Effect Speed Slider -->
+      <div class="control-group" id="speedGroup" style="display: none;">
+        <div class="control-header">
+          <span>Animation Speed</span>
+          <span class="slider-val" id="speedVal">50%</span>
+        </div>
+        <input type="range" id="speedSlider" min="1" max="100" value="50" oninput="app.setSpeed(this.value)">
+      </div>
+
+    </div>
+
+    <!-- Diagnostic & Protocol Tester Card -->
+    <details open>
+      <summary>Diagnostic Console & Direct Hardware Packets</summary>
+      <p style="font-size: 0.78rem; color: var(--text-muted); margin-top: 8px;">
+        Tap each test button below to send raw hardware packets directly to your strip lights:
+      </p>
+
+      <div class="drawer-section-title">⚡ Power & Static Color Verification</div>
+      <div class="test-grid">
+        <button class="test-btn" style="background: rgba(0, 255, 102, 0.1); border-color: rgba(0, 255, 102, 0.4); color: #00ff66; font-weight: 700; padding: 10px;" onclick="app.sendTest('tilde_on')">💡 5B ON</button>
+        <button class="test-btn" style="background: rgba(255, 0, 85, 0.1); border-color: rgba(255, 0, 85, 0.4); color: #ff0055; font-weight: 700; padding: 10px;" onclick="app.sendTest('tilde_off')">⬛ 5B OFF</button>
+        <button class="test-btn" style="border-color: #ff0055; color: #ff0055;" onclick="app.sendTest('tilde_red')">🔴 5A RED</button>
+        <button class="test-btn" style="border-color: #00ff66; color: #00ff66;" onclick="app.sendTest('tilde_green')">🟢 5A GREEN</button>
+        <button class="test-btn" style="border-color: #00f0ff; color: #00f0ff;" onclick="app.sendTest('tilde_blue')">🔵 5A BLUE</button>
+        <button class="test-btn" style="border-color: #ffffff; color: #ffffff;" onclick="app.sendTest('tilde_white')">⚪ 5A WHITE</button>
+      </div>
+
+      <div class="drawer-section-title">✨ Direct Hardware Lighting Scene Tests (Native 5C / 7E Scenes)</div>
+      <div class="test-grid">
+        <button class="test-btn" style="border-color: #f59e0b; color: #f59e0b;" onclick="app.sendTest('fx_scene_128')">⚡ Mode 128 (7-Col Jump)</button>
+        <button class="test-btn" style="border-color: #00f0ff; color: #00f0ff;" onclick="app.sendTest('fx_scene_130')">🌊 Mode 130 (7-Col Fade)</button>
+        <button class="test-btn" style="border-color: #00f0ff; color: #00f0ff;" onclick="app.sendTest('fx_scene_131')">🌊 Mode 131 (RGB Fade)</button>
+        <button class="test-btn" style="border-color: #ff00ff; color: #ff00ff;" onclick="app.sendTest('fx_scene_142')">⚡ Mode 142 (7-Col Strobe)</button>
+        <button class="test-btn" style="border-color: #ff00ff; color: #ff00ff;" onclick="app.sendTest('fx_scene_143')">⚡ Mode 143 (RGB Strobe)</button>
+        <button class="test-btn" style="border-color: #a855f7; color: #c084fc;" onclick="app.sendTest('fx_scene_132')">🌊 Mode 132 (Red Fade)</button>
+        <button class="test-btn" style="border-color: #a855f7; color: #c084fc;" onclick="app.sendTest('fx_scene_144')">⚡ Mode 144 (Red Strobe)</button>
+        <button class="test-btn" style="border-color: #ff0055; color: #ff0055;" onclick="app.sendTest('fx_scene_stop')">⏹ Stop Dynamic Mode</button>
+        <button class="test-btn" style="border-color: #10b981; color: #34d399; grid-column: span 2;" onclick="app.sendTest('fx_scene_sweep')">🚀 Run Auto Scene Sweep (Fades & Strobes)</button>
+      </div>
+
+      <div class="hex-send-row">
+        <input type="text" id="rawHexInput" class="hex-input" placeholder="5c 00 82 32 64 00 c5" value="5c 00 82 32 64 00 c5">
+        <button class="test-btn" style="padding: 8px 16px; background: rgba(0, 240, 255, 0.2); border-color: var(--neon-cyan); color: var(--neon-cyan);" onclick="app.sendCustomHex()">Send Hex</button>
+      </div>
+
+      <div class="log-box" id="debugLogs">SYSTEM INITIALIZED // WAITING FOR BLUETOOTH LINK...</div>
+    </details>
+
+  </div>
+
+  <script>
+    // Cyberpunk Color Presets
+    const PRESETS = [
+      { name: 'Cyber Red', hex: '#ff003c', r: 255, g: 0, b: 60 },
+      { name: 'Neon Orange', hex: '#ff6600', r: 255, g: 102, b: 0 },
+      { name: 'Cyber Yellow', hex: '#ffe600', r: 255, g: 230, b: 0 },
+      { name: 'Acid Green', hex: '#00ff66', r: 0, g: 255, b: 102 },
+      { name: 'Neon Cyan', hex: '#00f0ff', r: 0, g: 240, b: 255 },
+      { name: 'Electric Blue', hex: '#0066ff', r: 0, g: 102, b: 255 },
+      { name: 'Deep Violet', hex: '#7700ff', r: 119, g: 0, b: 255 },
+      { name: 'Neon Magenta', hex: '#ff007f', r: 255, g: 0, b: 127 },
+      { name: 'Hot Pink', hex: '#ff0055', r: 255, g: 0, b: 85 },
+      { name: 'Warm Amber', hex: '#ffccaa', r: 255, g: 204, b: 170 },
+      { name: 'Pure White', hex: '#ffffff', r: 255, g: 255, b: 255 },
+      { name: 'Ice White', hex: '#d0f5ff', r: 208, g: 245, b: 255 }
+    ];
+
+    // Supported Native Keepsmile Dynamic Scene Modes (128 - 150)
+    const EFFECT_MODES = [
+      { id: 0, name: 'Static Color (No Effect)' },
+      { id: 128, name: '7-Color Jump' },
+      { id: 129, name: 'RGB 3-Color Jump' },
+      { id: 130, name: '7-Color Gradual Fade' },
+      { id: 131, name: 'RGB 3-Color Gradual Fade' },
+      { id: 142, name: '7-Color Strobe Flash' },
+      { id: 143, name: 'RGB Strobe Flash' },
+      { id: 132, name: 'Red Gradual Fade' },
+      { id: 133, name: 'Green Gradual Fade' },
+      { id: 134, name: 'Blue Gradual Fade' },
+      { id: 135, name: 'Yellow Gradual Fade' },
+      { id: 136, name: 'Cyan Gradual Fade' },
+      { id: 137, name: 'Purple Gradual Fade' },
+      { id: 138, name: 'White Gradual Fade' },
+      { id: 139, name: 'Red / Green Crossfade' },
+      { id: 140, name: 'Red / Blue Crossfade' },
+      { id: 141, name: 'Green / Blue Crossfade' },
+      { id: 144, name: 'Red Strobe Flash' },
+      { id: 145, name: 'Green Strobe Flash' },
+      { id: 146, name: 'Blue Strobe Flash' },
+      { id: 147, name: 'Yellow Strobe Flash' },
+      { id: 148, name: 'Cyan Strobe Flash' },
+      { id: 149, name: 'Purple Strobe Flash' },
+      { id: 150, name: 'White Strobe Flash' }
+    ];
+
+    class LedController {
+      constructor() {
+        this.device = null;
+        this.server = null;
+        this.writeChar = null;
+        this.readChar = null;
+        this.isOn = false;
+        this.currentR = 0;
+        this.currentG = 240;
+        this.currentB = 255;
+        this.currentBrightness = 100;
+        this.currentSpeed = 50;
+        this.currentMode = 0;
+        
+        // Default strictly to 'tilde' native
+        this.selectedProtocol = 'tilde';
+        
+        // Serialized Write Queue for discrete commands
+        this.writeQueue = Promise.resolve();
+
+        // High-performance live stream throttling ("Latest Target Only")
+        this.isTransmitting = false;
+        this.pendingStateUpdate = false;
+        this.isModeTransmitting = false;
+        this.pendingModeUpdate = false;
+
+        // Custom User Palettes
+        this.savedColors = [];
+        this.loadSavedColors();
+
+        this.initUI();
+      }
+
+      log(msg) {
+        const box = document.getElementById('debugLogs');
+        const time = new Date().toLocaleTimeString();
+        box.textContent = `[${time}] ${msg}\n` + box.textContent;
+        console.log(`[OpenLight] ${msg}`);
+      }
+
+      initUI() {
+        // Build preset grid
+        const grid = document.getElementById('colorPresets');
+        grid.innerHTML = '';
+        PRESETS.forEach((p) => {
+          const swatch = document.createElement('div');
+          swatch.className = 'color-swatch';
+          swatch.style.background = p.hex;
+          swatch.title = p.name;
+          swatch.onclick = () => {
+            document.querySelectorAll('.color-swatch').forEach(s => s.classList.remove('active'));
+            document.querySelectorAll('.saved-swatch').forEach(s => s.classList.remove('active'));
+            swatch.classList.add('active');
+            this.setColor(p.r, p.g, p.b, p.hex);
+          };
+          grid.appendChild(swatch);
+        });
+
+        this.renderSavedColors();
+        this.updateStepperDisplay(this.currentMode);
+      }
+
+      loadSavedColors() {
+        try {
+          const raw = localStorage.getItem('openlight_saved_colors');
+          this.savedColors = raw ? JSON.parse(raw) : [];
+        } catch(e) {
+          this.savedColors = [];
+        }
+      }
+
+      saveCurrentColor() {
+        const hex = `#${this.currentR.toString(16).padStart(2, '0')}${this.currentG.toString(16).padStart(2, '0')}${this.currentB.toString(16).padStart(2, '0')}`.toUpperCase();
+        
+        if (this.savedColors.some(c => c.hex.toUpperCase() === hex)) {
+          this.flashSaveBtn('ALREADY SAVED', '#f59e0b');
+          return;
+        }
+
+        const colorEntry = {
+          id: Date.now(),
+          hex: hex,
+          r: this.currentR,
+          g: this.currentG,
+          b: this.currentB
+        };
+
+        this.savedColors.unshift(colorEntry);
+        if (this.savedColors.length > 24) this.savedColors.pop();
+
+        try {
+          localStorage.setItem('openlight_saved_colors', JSON.stringify(this.savedColors));
+        } catch(e) {
+          console.error('LocalStorage write error', e);
+        }
+
+        this.renderSavedColors();
+        this.flashSaveBtn('SAVED // OK', 'var(--neon-green)');
+        this.log(`Saved custom color to palette: ${hex}`);
+      }
+
+      deleteSavedColor(e, id) {
+        e.stopPropagation();
+        this.savedColors = this.savedColors.filter(c => c.id !== id);
+        try {
+          localStorage.setItem('openlight_saved_colors', JSON.stringify(this.savedColors));
+        } catch(e) {}
+        this.renderSavedColors();
+      }
+
+      clearAllSavedColors() {
+        if (!confirm('Clear all saved custom matrix colors?')) return;
+        this.savedColors = [];
+        try {
+          localStorage.removeItem('openlight_saved_colors');
+        } catch(e) {}
+        this.renderSavedColors();
+        this.log('Cleared custom palette.');
+      }
+
+      flashSaveBtn(text, color) {
+        const btn = document.getElementById('saveColorBtn');
+        const txt = document.getElementById('saveBtnText');
+        if (!btn || !txt) return;
+        const orig = txt.innerText;
+        txt.innerText = text;
+        btn.style.borderColor = color;
+        btn.style.color = color;
+        setTimeout(() => {
+          txt.innerText = orig;
+          btn.style.borderColor = '';
+          btn.style.color = '';
+        }, 1500);
+      }
+
+      renderSavedColors() {
+        const grid = document.getElementById('savedColorsGrid');
+        const count = document.getElementById('savedColorsCount');
+        const clearBtn = document.getElementById('clearPaletteBtn');
+        if (!grid) return;
+        
+        if (count) count.innerText = `(${this.savedColors.length})`;
+        if (clearBtn) clearBtn.style.display = this.savedColors.length > 0 ? 'inline-block' : 'none';
+
+        grid.innerHTML = '';
+        if (this.savedColors.length === 0) {
+          const hint = document.createElement('div');
+          hint.className = 'empty-palette-hint';
+          hint.innerText = '⚡ Pick any color from the matrix above and tap "Save Color" to store your favorite custom colors.';
+          grid.appendChild(hint);
+          return;
+        }
+
+        const currentHex = `#${this.currentR.toString(16).padStart(2, '0')}${this.currentG.toString(16).padStart(2, '0')}${this.currentB.toString(16).padStart(2, '0')}`.toUpperCase();
+
+        this.savedColors.forEach(item => {
+          const swatch = document.createElement('div');
+          swatch.className = 'saved-swatch' + (item.hex === currentHex ? ' active' : '');
+          swatch.style.background = item.hex;
+          swatch.title = `${item.hex} (Click to apply)`;
+          
+          const del = document.createElement('span');
+          del.className = 'delete-btn';
+          del.innerHTML = '&times;';
+          del.title = 'Remove color';
+          del.onclick = (e) => this.deleteSavedColor(e, item.id);
+          
+          swatch.appendChild(del);
+
+          swatch.onclick = () => {
+            document.querySelectorAll('.saved-swatch').forEach(s => s.classList.remove('active'));
+            document.querySelectorAll('.color-swatch').forEach(s => s.classList.remove('active'));
+            swatch.classList.add('active');
+            this.setColor(item.r, item.g, item.b, item.hex);
+          };
+
+          grid.appendChild(swatch);
+        });
+      }
+
+      updateStatus(state, text) {
+        const dot = document.getElementById('statusDot');
+        const label = document.getElementById('statusText');
+        dot.className = 'status-dot ' + (state || '');
+        label.innerText = text;
+      }
+
+      setProtocol(val) {
+        this.selectedProtocol = val;
+        this.log(`Protocol set to: ${val}`);
+      }
+
+      async connect() {
+        if (!navigator.bluetooth) {
+          alert('Web Bluetooth is not supported on this browser. On iPhone, open this page inside the free "Bluefy" app from the App Store.');
+          this.log('Web Bluetooth API unavailable.');
+          return;
+        }
+
+        try {
+          this.updateStatus('connecting', 'BLE // SCANNING');
+          this.log('Requesting Bluetooth device...');
+
+          const ALL_LED_SERVICES = [
+            '0000afd0-0000-1000-8000-00805f9b34fb', // Verified Service for KS03
+            0xafd0,
+            0xffe0, 0xffe5, 0xffe1,
+            0xee01, 0xee02, 0xee03, 0xee10,
+            0xfff0, 0xfff3, 0xfff5,
+            0xffd5, 0xffd0,
+            0xfee0, 0x5301, 0xcc02,
+            0x1800, 0x1801
+          ];
+
+          this.device = await navigator.bluetooth.requestDevice({
+            acceptAllDevices: true,
+            optionalServices: ALL_LED_SERVICES
+          });
+
+          this.device.addEventListener('gattserverdisconnected', () => this.onDisconnected());
+
+          this.log(`Target chosen: ${this.device.name || 'Unnamed'} (${this.device.id})`);
+          this.updateStatus('connecting', 'BLE // CONNECTING');
+
+          this.server = await this.device.gatt.connect();
+          this.log('GATT Server connected! Waiting 800ms for connection to stabilize...');
+          await new Promise(resolve => setTimeout(resolve, 800));
+
+          if (!this.server || !this.server.connected) {
+            throw new Error('Device disconnected immediately after connection.');
+          }
+
+          // Direct binding to verified afd0 service and afd1 characteristic
+          this.log('Connecting to service afd0...');
+          let targetService = null;
+          try {
+            targetService = await this.server.getPrimaryService('0000afd0-0000-1000-8000-00805f9b34fb');
+          } catch(e) {
+            this.log(`Primary lookup error: ${e.message}, checking fallback...`);
+          }
+
+          if (!targetService) {
+            const CANDIDATES = [
+              '0000afd0-0000-1000-8000-00805f9b34fb',
+              '0000fff0-0000-1000-8000-00805f9b34fb',
+              '0000ffe0-0000-1000-8000-00805f9b34fb'
+            ];
+            for (const s of CANDIDATES) {
+              try {
+                targetService = await this.server.getPrimaryService(s);
+                if (targetService) break;
+              } catch(e) {}
+            }
+          }
+
+          if (!targetService) {
+            throw new Error('Could not open target LED service.');
+          }
+
+          this.log(`>>> Service active: ${targetService.uuid}`);
+
+          // Get Write Characteristic (afd1)
+          try {
+            this.writeChar = await targetService.getCharacteristic('0000afd1-0000-1000-8000-00805f9b34fb');
+            this.log(`>>> Selected write characteristic: afd1`);
+          } catch(e) {
+            const chars = await targetService.getCharacteristics();
+            for (const c of chars) {
+              if (c.properties.write || c.properties.writeWithoutResponse) {
+                this.writeChar = c;
+                break;
+              }
+            }
+          }
+
+          if (!this.writeChar) {
+            throw new Error('Could not find write characteristic afd1.');
+          }
+
+          // Optional: Read Characteristic (afd3)
+          try {
+            this.readChar = await targetService.getCharacteristic('0000afd3-0000-1000-8000-00805f9b34fb');
+            if (this.readChar && this.readChar.properties.read) {
+              const val = await this.readChar.readValue();
+              const hex = Array.from(new Uint8Array(val.buffer)).map(b => b.toString(16).padStart(2, '0')).join(' ');
+              this.log(`>>> READ afd3: [${hex}] (${val.byteLength} bytes)`);
+            }
+          } catch(err) {
+            this.log(`Read afd3 note: ${err.message}`);
+          }
+
+          // UI update on success
+          document.getElementById('disconnectedView').style.display = 'none';
+          document.getElementById('connectedView').style.display = 'flex';
+          document.getElementById('deviceName').innerText = this.device.name || 'KS03~0D0089';
+          document.getElementById('deviceDetails').innerText = `Service: afd0 // Write: afd1 (ONLINE)`;
+          document.getElementById('mainControls').style.opacity = '1';
+          document.getElementById('mainControls').style.pointerEvents = 'auto';
+
+          this.updateStatus('connected', 'BLE // ONLINE');
+          this.log('Hardware Link Established. Ready!');
+
+          this.setPowerState(true);
+        } catch (err) {
+          this.log(`Connection failed: ${err.message}`);
+          this.updateStatus('', 'BLE // DISCONNECTED');
+          if (err.name !== 'NotFoundError') {
+            alert(`Could not connect: ${err.message}`);
+          }
+        }
+      }
+
+      onDisconnected() {
+        this.log('Device disconnected.');
+        this.updateStatus('', 'BLE // DISCONNECTED');
+        this.writeChar = null;
+        this.readChar = null;
+        this.server = null;
+        
+        // Reset write queue & streaming flags to prevent null exceptions
+        this.writeQueue = Promise.resolve();
+        this.isTransmitting = false;
+        this.pendingStateUpdate = false;
+
+        document.getElementById('disconnectedView').style.display = 'flex';
+        document.getElementById('connectedView').style.display = 'none';
+        document.getElementById('mainControls').style.opacity = '0.45';
+        document.getElementById('mainControls').style.pointerEvents = 'none';
+      }
+
+      async disconnect() {
+        if (this.device && this.device.gatt.connected) {
+          await this.device.gatt.disconnect();
+        }
+        this.onDisconnected();
+      }
+
+      // Serialized Queue to prevent GATT Operation in Progress
+      sendRaw(bytes) {
+        if (!this.writeChar || !this.server || !this.server.connected) {
+          return Promise.resolve();
+        }
+        
+        this.writeQueue = this.writeQueue.then(async () => {
+          if (!this.writeChar || !this.server || !this.server.connected) return;
+          try {
+            const payload = new Uint8Array(bytes);
+            const hexStr = Array.from(payload).map(b => b.toString(16).padStart(2, '0')).join(' ');
+            this.log(`TX: ${hexStr}`);
+            
+            if (this.writeChar.properties.writeWithoutResponse) {
+              await this.writeChar.writeValueWithoutResponse(payload);
+            } else {
+              await this.writeChar.writeValueWithResponse(payload);
+            }
+            // 50ms throttle gap so microcontroller reliably ingests packet
+            await new Promise(res => setTimeout(res, 50));
+          } catch (err) {
+            this.log(`Write error: ${err.message}`);
+          }
+        }).catch(err => {
+          this.log(`Queue error: ${err.message}`);
+        });
+
+        return this.writeQueue;
+      }
+
+      // High-performance streaming loop for color
+      async scheduleTransmit() {
+        if (this.isTransmitting) return;
+        this.isTransmitting = true;
+
+        try {
+          while (this.pendingStateUpdate && this.server && this.server.connected && this.writeChar) {
+            this.pendingStateUpdate = false;
+            const p = this.selectedProtocol;
+
+            if (p === 'tilde' || p === 'both' || p === 'ac') {
+              // Native KS03~ Color & Brightness: 5A 00 01 R G B W BRI SPEED A5
+              await this.sendRaw([0x5a, 0x00, 0x01, this.currentR, this.currentG, this.currentB, 0x00, this.currentBrightness, this.currentSpeed, 0xa5]);
+            }
+            if (p === 'both' || p === 'hyphen') {
+              // KS03- Color: 7E 07 05 03 R G B 00 EF
+              await this.sendRaw([0x7e, 0x07, 0x05, 0x03, this.currentR, this.currentG, this.currentB, 0x00, 0xef]);
+              if (p === 'hyphen') {
+                await this.sendRaw([0x7e, 0x04, 0x01, this.currentBrightness, 0xff, 0xff, 0xff, 0x00, 0xef]);
+              }
+            }
+            if (p === 'elk') {
+              await this.sendRaw([0x7e, 0x00, 0x05, 0x03, this.currentR, this.currentG, this.currentB, 0x00, 0xef]);
+            }
+          }
+        } finally {
+          this.isTransmitting = false;
+        }
+      }
+
+      async togglePower() {
+        this.setPowerState(!this.isOn);
+        const p = this.selectedProtocol;
+
+        if (this.isOn) {
+          if (p === 'tilde' || p === 'both') {
+            // Native KS03~ Power ON: 5B F0 00 B5
+            await this.sendRaw([0x5b, 0xf0, 0x00, 0xb5]);
+          }
+          if (p === 'both' || p === 'hyphen') {
+            await this.sendRaw([0x7e, 0x04, 0x04, 0xf0, 0x01, 0x01, 0xff, 0x00, 0xef]);
+          }
+          if (p === 'ac') {
+            await this.sendRaw([0xac, 0xf0, 0x00, 0xca]);
+          }
+          if (p === 'elk') {
+            await this.sendRaw([0x7e, 0x00, 0x04, 0xf0, 0x00, 0x01, 0xff, 0x00, 0xef]);
+          }
+        } else {
+          if (p === 'tilde' || p === 'both') {
+            // Native KS03~ Power OFF: 5B 0F 00 B5
+            await this.sendRaw([0x5b, 0x0f, 0x00, 0xb5]);
+          }
+          if (p === 'both' || p === 'hyphen') {
+            await this.sendRaw([0x7e, 0x04, 0x04, 0x10, 0x01, 0x00, 0xff, 0x00, 0xef]);
+          }
+          if (p === 'ac') {
+            await this.sendRaw([0xac, 0x0f, 0x00, 0xca]);
+          }
+          if (p === 'elk') {
+            await this.sendRaw([0x7e, 0x00, 0x04, 0x00, 0x00, 0x00, 0xff, 0x00, 0xef]);
+          }
+        }
+      }
+
+      setPowerState(on) {
+        this.isOn = on;
+        const btn = document.getElementById('powerBtn');
+        const label = document.getElementById('powerStateLabel');
+        if (this.isOn) {
+          btn.classList.add('is-on');
+          label.innerText = 'CORE: ACTIVE';
+          label.style.color = 'var(--neon-green)';
+          this.updateBulbGlow();
+        } else {
+          btn.classList.remove('is-on');
+          label.innerText = 'CORE: OFF';
+          label.style.color = 'var(--text-muted)';
+        }
+      }
+
+      updateBulbGlow() {
+        const hex = `rgb(${this.currentR}, ${this.currentG}, ${this.currentB})`;
+        document.documentElement.style.setProperty('--bulb-glow', hex);
+      }
+
+      setColor(r, g, b, hex) {
+        this.currentR = r;
+        this.currentG = g;
+        this.currentB = b;
+
+        // If we were in an animation mode, turn dynamic mode OFF
+        if (this.currentMode !== 0) {
+          this.currentMode = 0;
+          const modeSelect = document.getElementById('modeSelect');
+          if (modeSelect) modeSelect.value = '0';
+          const speedGroup = document.getElementById('speedGroup');
+          if (speedGroup) speedGroup.style.display = 'none';
+          this.updateStepperDisplay(0);
+
+          if (this.selectedProtocol === 'tilde' || this.selectedProtocol === 'both') {
+            // Stop sound/mic reactive mode and restore pure lighting mode
+            this.sendRaw([0x5a, 0x0a, 0x0f, 0x03, 0x05, 0xa5]);
+          }
+        }
+
+        if (!this.isOn) this.setPowerState(true);
+        this.updateBulbGlow();
+
+        if (hex) {
+          const picker = document.getElementById('customColorPicker');
+          if (picker) picker.value = hex;
+          const hexLbl = document.getElementById('hexLabel');
+          if (hexLbl) hexLbl.innerText = hex.toUpperCase();
+        }
+
+        // Trigger throttled transmission
+        this.pendingStateUpdate = true;
+        this.scheduleTransmit();
+      }
+
+      onCustomColor(hex) {
+        const r = parseInt(hex.substr(1, 2), 16);
+        const g = parseInt(hex.substr(3, 2), 16);
+        const b = parseInt(hex.substr(5, 2), 16);
+        document.getElementById('hexLabel').innerText = hex.toUpperCase();
+        document.querySelectorAll('.color-swatch').forEach(s => s.classList.remove('active'));
+        document.querySelectorAll('.saved-swatch').forEach(s => s.classList.remove('active'));
+        this.setColor(r, g, b, hex);
+      }
+
+      onBrightnessInput(val) {
+        this.currentBrightness = parseInt(val, 10);
+        document.getElementById('brightnessVal').innerText = `${this.currentBrightness}%`;
+        
+        if (this.currentMode > 0) {
+          // Live throttling for animation brightness
+          this.scheduleModeTransmit();
+        } else {
+          // Static color mode
+          this.pendingStateUpdate = true;
+          this.scheduleTransmit();
+        }
+      }
+
+      setSpeed(val) {
+        this.currentSpeed = parseInt(val, 10);
+        document.getElementById('speedVal').innerText = `${this.currentSpeed}%`;
+        
+        if (this.currentMode > 0) {
+          // Live throttling for animation speed
+          this.scheduleModeTransmit();
+        } else {
+          this.pendingStateUpdate = true;
+          this.scheduleTransmit();
+        }
+      }
+
+      setMode(modeVal) {
+        const mode = parseInt(modeVal, 10);
+        this.currentMode = mode;
+        const speedGroup = document.getElementById('speedGroup');
+        
+        if (mode === 0) {
+          if (speedGroup) speedGroup.style.display = 'none';
+          this.updateStepperDisplay(0);
+          this.sendModeUpdate();
+          return;
+        }
+
+        if (speedGroup) speedGroup.style.display = 'block';
+        if (!this.isOn) this.setPowerState(true);
+        this.updateStepperDisplay(mode);
+        this.sendModeUpdate();
+      }
+
+      stepMode(delta) {
+        let curIdx = EFFECT_MODES.findIndex(m => m.id === this.currentMode);
+        if (curIdx === -1) curIdx = 0;
+        let nextIdx = curIdx + delta;
+        if (nextIdx < 0) nextIdx = EFFECT_MODES.length - 1;
+        if (nextIdx >= EFFECT_MODES.length) nextIdx = 0;
+        this.setMode(EFFECT_MODES[nextIdx].id);
+      }
+
+      updateStepperDisplay(mode) {
+        const modeObj = EFFECT_MODES.find(m => m.id === mode) || { id: mode, name: `Effect Pattern #${mode}` };
+        const numElem = document.getElementById('stepperNum');
+        const descElem = document.getElementById('stepperName');
+        const selectElem = document.getElementById('modeSelect');
+        if (numElem) numElem.innerText = mode === 0 ? 'STATIC RGB' : `EFFECT #${mode}`;
+        if (descElem) descElem.innerText = modeObj.name.toUpperCase();
+        if (selectElem) selectElem.value = mode.toString();
+      }
+
+      scheduleModeTransmit() {
+        if (this.isModeTransmitting) {
+          this.pendingModeUpdate = true;
+          return;
+        }
+        this.isModeTransmitting = true;
+        this.pendingModeUpdate = false;
+
+        this.sendModeUpdate().finally(async () => {
+          await new Promise(r => setTimeout(r, 60));
+          this.isModeTransmitting = false;
+          if (this.pendingModeUpdate) {
+            this.scheduleModeTransmit();
+          }
+        });
+      }
+
+      // Native Keepsmile KS03 dynamic lighting scene sender (5C 00 <mode> <speed> <bri> 00 C5 & 7E 05 03 <mode>...)
+      async sendModeUpdate() {
+        const mode = this.currentMode;
+        const speed = this.currentSpeed;
+        const bri = this.currentBrightness;
+        const p = this.selectedProtocol;
+
+        this.log(`[Mode Update] Setting Mode=${mode}, Speed=${speed}%, Bri=${bri}%`);
+
+        if (mode === 0) {
+          // Dynamic mode OFF -> restore static RGB
+          if (p === 'tilde' || p === 'both') {
+            await this.sendRaw([0x5a, 0x0a, 0x0f, 0x03, 0x05, 0xa5]);
+            await this.sendRaw([0x5a, 0x00, 0x01, this.currentR, this.currentG, this.currentB, 0x00, bri, speed, 0xa5]);
+          }
+          if (p === 'hyphen' || p === 'both') {
+            await this.sendRaw([0x7e, 0x07, 0x05, 0x03, this.currentR, this.currentG, this.currentB, 0x00, 0xef]);
+          }
+          return;
+        }
+
+        // Native Keepsmile 5C lighting scene command (CmdBase.getModle: 5C 00 <mode> <speed> <bri> 00 C5)
+        if (p === 'tilde' || p === 'both') {
+          // Ensure strip is not trapped in mic/sound reactivity mode
+          await this.sendRaw([0x5a, 0x0a, 0x0f, 0x03, 0x05, 0xa5]);
+          // Send official 5C scene packet
+          await this.sendRaw([0x5c, 0x00, mode, speed, bri, 0x00, 0xc5]);
+        }
+
+        // Native Keepsmile 7E lighting scene command (CmdBase.getScene: 7E 05 03 <mode> 03 FF FF 00 EF)
+        if (p === 'hyphen' || p === 'both') {
+          await this.sendRaw([0x7e, 0x05, 0x03, mode, 0x03, 0xff, 0xff, 0x00, 0xef]);
+        }
+      }
+
+      // Protocol & Effect hardware test runner
+      async sendTest(type) {
+        this.log(`--- Running test: ${type} ---`);
+        const speed = this.currentSpeed || 50;
+        const bri = this.currentBrightness || 100;
+
+        switch (type) {
+          case 'tilde_on':
+            this.log('Testing 5B Power ON (5B F0 00 B5)...');
+            await this.sendRaw([0x5b, 0xf0, 0x00, 0xb5]);
+            this.setPowerState(true);
+            break;
+          case 'tilde_off':
+            this.log('Testing 5B Power OFF (5B 0F 00 B5)...');
+            await this.sendRaw([0x5b, 0x0f, 0x00, 0xb5]);
+            this.setPowerState(false);
+            break;
+          case 'tilde_red':
+            this.log('Testing 5A RED (5A 00 01 FF 00 00 00 64 32 A5)...');
+            await this.sendRaw([0x5a, 0x00, 0x01, 0xff, 0x00, 0x00, 0x00, 0x64, 0x32, 0xa5]);
+            break;
+          case 'tilde_green':
+            this.log('Testing 5A GREEN (5A 00 01 00 FF 00 00 64 32 A5)...');
+            await this.sendRaw([0x5a, 0x00, 0x01, 0x00, 0xff, 0x00, 0x00, 0x64, 0x32, 0xa5]);
+            break;
+          case 'tilde_blue':
+            this.log('Testing 5A BLUE (5A 00 01 00 00 FF 00 64 32 A5)...');
+            await this.sendRaw([0x5a, 0x00, 0x01, 0x00, 0x00, 0xff, 0x00, 0x64, 0x32, 0xa5]);
+            break;
+          case 'tilde_white':
+            this.log('Testing 5A WHITE (5A 00 01 FF FF FF 00 64 32 A5)...');
+            await this.sendRaw([0x5a, 0x00, 0x01, 0xff, 0xff, 0xff, 0x00, 0x64, 0x32, 0xa5]);
+            break;
+
+          // Direct Hardware Scene Tests (Native Keepsmile 5C / 7E Scenes)
+          case 'fx_scene_128':
+            this.log('Testing Scene 128: 7-Color Jump [5C 00 80 ...]');
+            this.setMode(128);
+            break;
+          case 'fx_scene_130':
+            this.log('Testing Scene 130: 7-Color Gradual Fade [5C 00 82 ...]');
+            this.setMode(130);
+            break;
+          case 'fx_scene_131':
+            this.log('Testing Scene 131: RGB 3-Color Gradual Fade [5C 00 83 ...]');
+            this.setMode(131);
+            break;
+          case 'fx_scene_142':
+            this.log('Testing Scene 142: 7-Color Strobe Flash [5C 00 8E ...]');
+            this.setMode(142);
+            break;
+          case 'fx_scene_143':
+            this.log('Testing Scene 143: RGB Strobe Flash [5C 00 8F ...]');
+            this.setMode(143);
+            break;
+          case 'fx_scene_132':
+            this.log('Testing Scene 132: Red Gradual Fade [5C 00 84 ...]');
+            this.setMode(132);
+            break;
+          case 'fx_scene_144':
+            this.log('Testing Scene 144: Red Strobe Flash [5C 00 90 ...]');
+            this.setMode(144);
+            break;
+          case 'fx_scene_stop':
+            this.log('Stopping Dynamic Mode (Switching to Static RGB Mode 0)...');
+            this.setMode(0);
+            break;
+          case 'fx_scene_sweep':
+            this.log('=== STARTING HARDWARE SCENE SWEEP ===');
+            const sweepScenes = [128, 130, 131, 142, 143, 132, 144];
+            for (const sc of sweepScenes) {
+              const name = EFFECT_MODES.find(m => m.id === sc)?.name || sc;
+              this.log(`--> Running Scene ${sc}: ${name}...`);
+              this.setMode(sc);
+              await new Promise(r => setTimeout(r, 3500));
+            }
+            this.log('=== HARDWARE SCENE SWEEP COMPLETE ===');
+            break;
+        }
+      }
+
+      async readDeviceState() {
+        if (!this.readChar) {
+          this.log('readChar (afd3) not connected.');
+          return;
+        }
+        try {
+          const val = await this.readChar.readValue();
+          const hex = Array.from(new Uint8Array(val.buffer)).map(b => b.toString(16).padStart(2, '0')).join(' ');
+          this.log(`>>> READ afd3 VALUE: [${hex}] (${val.byteLength} bytes)`);
+          alert(`Current afd3 State Bytes: [${hex}]`);
+        } catch(err) {
+          this.log(`Read error: ${err.message}`);
+        }
+      }
+
+      sendCustomHex() {
+        const input = document.getElementById('rawHexInput').value.trim();
+        if (!input) return;
+        const clean = input.replace(/0x/g, '').replace(/[\s,-]/g, '');
+        if (clean.length % 2 !== 0) {
+          alert('Invalid hex string length');
+          return;
+        }
+        const bytes = [];
+        for (let i = 0; i < clean.length; i += 2) {
+          bytes.push(parseInt(clean.substr(i, 2), 16));
+        }
+        this.log(`Manual Send: [${bytes.map(b => b.toString(16).padStart(2, '0')).join(' ')}]`);
+        this.sendRaw(bytes);
+      }
+    }
+
+    const app = new LedController();
+  </script>
+</body>
+</html>
