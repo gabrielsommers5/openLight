@@ -1175,34 +1175,50 @@
             '0000fee0-0000-1000-8000-00805f9b34fb'
           ];
 
-          try {
-            this.device = await navigator.bluetooth.requestDevice({
-              acceptAllDevices: true,
-              optionalServices: ALL_LED_SERVICES
-            });
-          } catch (reqErr) {
-            const reqMsg = reqErr?.message || (typeof reqErr === 'string' ? reqErr : '') || '';
-            if (reqMsg.toLowerCase().includes('cancel')) {
-              throw reqErr;
+          // If device was already chosen in this session, attempt direct reconnect without re-prompting
+          if (!this.device) {
+            try {
+              this.device = await navigator.bluetooth.requestDevice({
+                acceptAllDevices: true,
+                optionalServices: ALL_LED_SERVICES
+              });
+            } catch (reqErr) {
+              const reqMsg = reqErr?.message || (typeof reqErr === 'string' ? reqErr : '') || '';
+              if (reqMsg.toLowerCase().includes('cancel')) {
+                throw reqErr;
+              }
+              this.log(`acceptAllDevices mode error, falling back to namePrefix filter: ${reqMsg}`);
+              this.device = await navigator.bluetooth.requestDevice({
+                filters: [{ namePrefix: 'KS' }, { namePrefix: 'ks' }],
+                optionalServices: ALL_LED_SERVICES
+              });
             }
-            this.log(`acceptAllDevices mode error, falling back to namePrefix filter: ${reqMsg}`);
-            this.device = await navigator.bluetooth.requestDevice({
-              filters: [{ namePrefix: 'KS' }, { namePrefix: 'ks' }],
-              optionalServices: ALL_LED_SERVICES
-            });
-          }
 
-          this.device.addEventListener('gattserverdisconnected', () => this.onDisconnected());
+            this.device.addEventListener('gattserverdisconnected', () => this.onDisconnected());
+          }
 
           this.log(`Target chosen: ${this.device.name || 'Unnamed'} (${this.device.id})`);
           this.updateStatus('connecting', 'BLE // CONNECTING');
 
-          this.server = await this.device.gatt.connect();
-          this.log('GATT Server connected! Waiting 800ms for connection to stabilize...');
-          await new Promise(resolve => setTimeout(resolve, 800));
+          // Connect with retry to handle iOS CoreBluetooth parameter negotiation drops
+          let connected = false;
+          for (let attempt = 1; attempt <= 2; attempt++) {
+            try {
+              this.log(`Connecting GATT Server (attempt ${attempt}/2)...`);
+              this.server = await this.device.gatt.connect();
+              await new Promise(resolve => setTimeout(resolve, 300));
+              if (this.server && this.server.connected) {
+                connected = true;
+                break;
+              }
+            } catch (connErr) {
+              this.log(`Attempt ${attempt} notice: ${connErr?.message || connErr}`);
+              if (attempt < 2) await new Promise(r => setTimeout(r, 500));
+            }
+          }
 
-          if (!this.server || !this.server.connected) {
-            throw new Error('Device disconnected immediately after connection.');
+          if (!connected || !this.server || !this.server.connected) {
+            throw new Error('Device dropped connection during handshake.');
           }
 
           // Direct binding to verified afd0 service and afd1 characteristic
@@ -1211,7 +1227,7 @@
           try {
             targetService = await this.server.getPrimaryService('0000afd0-0000-1000-8000-00805f9b34fb');
           } catch(e) {
-            this.log(`Primary lookup error: ${e.message}, checking fallback...`);
+            this.log(`Primary lookup error: ${e?.message || e}, checking fallback...`);
           }
 
           if (!targetService) {
@@ -1252,16 +1268,16 @@
             throw new Error('Could not find write characteristic afd1.');
           }
 
-          // Optional: Read Characteristic (afd3)
+          // Optional reference to Read Characteristic (afd3) without triggering unsolicited read on iOS
           try {
             this.readChar = await targetService.getCharacteristic('0000afd3-0000-1000-8000-00805f9b34fb');
-            if (this.readChar && this.readChar.properties.read) {
-              const val = await this.readChar.readValue();
-              const hex = Array.from(new Uint8Array(val.buffer)).map(b => b.toString(16).padStart(2, '0')).join(' ');
-              this.log(`>>> READ afd3: [${hex}] (${val.byteLength} bytes)`);
-            }
-          } catch(err) {
-            this.log(`Read afd3 note: ${err?.message || err}`);
+          } catch(err) {}
+
+          // Send immediate Keepsmile session handshake (Power ON sync) to lock link and prevent hardware idle timeout
+          try {
+            await this.sendRaw([0x5b, 0xf0, 0x00, 0xb5]);
+          } catch (initErr) {
+            this.log(`Session handshake note: ${initErr?.message || initErr}`);
           }
 
           // UI update on success
@@ -1315,6 +1331,7 @@
         if (this.device && this.device.gatt.connected) {
           await this.device.gatt.disconnect();
         }
+        this.device = null;
         this.onDisconnected();
       }
 
