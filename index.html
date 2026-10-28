@@ -1168,19 +1168,29 @@
 
           const ALL_LED_SERVICES = [
             '0000afd0-0000-1000-8000-00805f9b34fb', // Verified Service for KS03
-            0xafd0,
-            0xffe0, 0xffe5, 0xffe1,
-            0xee01, 0xee02, 0xee03, 0xee10,
-            0xfff0, 0xfff3, 0xfff5,
-            0xffd5, 0xffd0,
-            0xfee0, 0x5301, 0xcc02,
-            0x1800, 0x1801
+            '0000fff0-0000-1000-8000-00805f9b34fb',
+            '0000ffe0-0000-1000-8000-00805f9b34fb',
+            '0000ffd5-0000-1000-8000-00805f9b34fb',
+            '0000ee01-0000-1000-8000-00805f9b34fb',
+            '0000fee0-0000-1000-8000-00805f9b34fb'
           ];
 
-          this.device = await navigator.bluetooth.requestDevice({
-            acceptAllDevices: true,
-            optionalServices: ALL_LED_SERVICES
-          });
+          try {
+            this.device = await navigator.bluetooth.requestDevice({
+              acceptAllDevices: true,
+              optionalServices: ALL_LED_SERVICES
+            });
+          } catch (reqErr) {
+            const reqMsg = reqErr?.message || (typeof reqErr === 'string' ? reqErr : '') || '';
+            if (reqMsg.toLowerCase().includes('cancel')) {
+              throw reqErr;
+            }
+            this.log(`acceptAllDevices mode error, falling back to namePrefix filter: ${reqMsg}`);
+            this.device = await navigator.bluetooth.requestDevice({
+              filters: [{ namePrefix: 'KS' }, { namePrefix: 'ks' }],
+              optionalServices: ALL_LED_SERVICES
+            });
+          }
 
           this.device.addEventListener('gattserverdisconnected', () => this.onDisconnected());
 
@@ -1251,7 +1261,7 @@
               this.log(`>>> READ afd3: [${hex}] (${val.byteLength} bytes)`);
             }
           } catch(err) {
-            this.log(`Read afd3 note: ${err.message}`);
+            this.log(`Read afd3 note: ${err?.message || err}`);
           }
 
           // UI update on success
@@ -1267,10 +1277,18 @@
 
           this.setPowerState(true);
         } catch (err) {
-          this.log(`Connection failed: ${err.message}`);
+          const errMsg = err?.message || (typeof err === 'string' ? err : '') || err?.name || JSON.stringify(err) || 'Unknown connection error';
+          this.log(`Connection failed: ${errMsg}`);
           this.updateStatus('', 'BLE // DISCONNECTED');
-          if (err.name !== 'NotFoundError') {
-            alert(`Could not connect: ${err.message}`);
+          
+          const isUserCancelled = 
+            (err && err.name === 'NotFoundError') ||
+            errMsg.toLowerCase().includes('cancel') ||
+            errMsg.toLowerCase().includes('cancelled') ||
+            errMsg.toLowerCase().includes('dismiss');
+
+          if (!isUserCancelled) {
+            alert(`Could not connect: ${errMsg}\n\nTroubleshooting tips:\n1. Make sure other devices (PC or Keepsmile app) are disconnected from the strip.\n2. Ensure Bluetooth permission is enabled for your browser in iOS Settings.`);
           }
         }
       }
